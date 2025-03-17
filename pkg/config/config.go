@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"log/slog"
 	"os"
 
@@ -12,16 +11,19 @@ import (
 )
 
 type Config struct {
-	Connections []map[string]any `yaml:"connections"`
-	Reports     []ReportConfig   `yaml:"reports"`
+	Connections      []map[string]any `yaml:"connections"`
+	Reports          []ReportConfig   `yaml:"reports"`
+	StagingDirectory string           `yaml:"stagingDirectory"`
 }
 
 type ReportConfig struct {
-	Name         string            `yaml:"name"`
-	Connection   string            `yaml:"connection"`
-	QueryParams  map[string]string `yaml:"query_params"`
-	TemplatePath string            `yaml:"template"`
-	Schedule     string            `yaml:"schedule"`
+	Name             string            `yaml:"name"`
+	Connection       string            `yaml:"connection"`
+	QueryParams      map[string]string `yaml:"query_params"`
+	TemplatePath     string            `yaml:"template"`
+	Schedule         string            `yaml:"schedule"`
+	StagingDirectory string
+	connection       connection.ConnectionProvider
 }
 
 func LoadConfig(filename string) (*Config, error) {
@@ -38,7 +40,7 @@ func LoadConfig(filename string) (*Config, error) {
 	err = yaml.Unmarshal([]byte(expandedYaml), &config)
 
 	// Validate cron expressions
-	for _, report := range config.Reports {
+	for k, report := range config.Reports {
 		slog.Debug("Ensuring cron entry is valid", "schedule", report.Schedule)
 		if report.Schedule == "" {
 			return nil, fmt.Errorf("cron schedule not provided in report '%s'", report.Name)
@@ -47,32 +49,22 @@ func LoadConfig(filename string) (*Config, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid cron schedule '%s' in report '%s': %v", report.Schedule, report.Name, err)
 		}
+		var c connection.ConnectionProvider
+		for _, conn := range config.Connections {
+			if conn["name"].(string) == report.Connection {
+				c, err = InitializeConnection(conn)
+				if err != nil {
+					slog.Error("Unable to fetch connection details", "conn", conn, "report", report.Name, "err", err)
+					c = nil
+				}
+			}
+		}
+		if c == nil {
+			return nil, fmt.Errorf("invalid connection reference '%s' in report '%s'", report.Connection, report.Name)
+		}
+		config.Reports[k].StagingDirectory = config.StagingDirectory
+		config.Reports[k].connection = c
 	}
 
 	return &config, err
-}
-
-func InitializeConnections(config *Config) map[string]connection.ConnectionProvider {
-	connections := make(map[string]connection.ConnectionProvider)
-
-	for _, connData := range config.Connections {
-		name := connData["name"].(string)
-		connType := connData["type"].(string)
-
-		var conn connection.ConnectionProvider
-		switch connType {
-		case "GoogleSheets":
-			conn = &connection.GoogleSheetsAuth{CredentialsFile: connData["credentials_file"].(string)}
-		case "PostgreSQL":
-			conn = &connection.PostgresAuth{DSN: connData["dsn"].(string)}
-		default:
-			log.Fatalf("Unknown connection type: %s", connType)
-		}
-
-		if err := conn.Authenticate(); err != nil {
-			log.Fatalf("Failed to authenticate %s: %v", name, err)
-		}
-		connections[name] = conn
-	}
-	return connections
 }

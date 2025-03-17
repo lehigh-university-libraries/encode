@@ -2,7 +2,6 @@ package connection_test
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -25,18 +24,18 @@ func TestPostgresAuth_FetchReport(t *testing.T) {
 		setupMock       func()
 		params          map[string]string
 		expectError     bool
-		expectedResults any
+		expectedResults []map[string]string
 	}{
 		{
 			name: "Valid Query",
 			setupMock: func() {
 				mock.ExpectQuery("SELECT id, name FROM users").
 					WillReturnRows(pgxmock.NewRows([]string{"id", "name"}).
-						AddRow(1, "Alice").
-						AddRow(2, "Bob"))
+						AddRow("1", "Alice").
+						AddRow("2", "Bob"))
 			},
 			params: map[string]string{"query": "SELECT id, name FROM users"},
-			expectedResults: []map[string]any{
+			expectedResults: []map[string]string{
 				{
 					"id":   "1",
 					"name": "Alice",
@@ -92,39 +91,13 @@ func TestPostgresAuth_FetchReport(t *testing.T) {
 				return
 			}
 
-			expectedResults, ok := tt.expectedResults.([]map[string]any)
-			if !ok {
-				t.Fatalf("Expected result type mismatch: got %T, want []map[string]any", tt.expectedResults)
+			if len(tt.expectedResults) != len(results) {
+				t.Fatalf("Mismatched lengths: expected %d, got %d", len(tt.expectedResults), len(results))
 			}
-
-			actualResults, ok := results.([]map[string]any)
-			if !ok {
-				t.Fatalf("Actual result type mismatch: got %T, want []map[string]any", results)
-			}
-
-			if len(expectedResults) != len(actualResults) {
-				t.Fatalf("Mismatched lengths: expected %d, got %d", len(expectedResults), len(actualResults))
-			}
-
-			// Compare each map in the slices
-			for i, expectedMap := range expectedResults {
-				actualMap := actualResults[i]
-				expectedNormalized := normalizeMap(expectedMap)
-				actualNormalized := normalizeMap(actualMap)
-				if !reflect.DeepEqual(expectedNormalized, actualNormalized) {
-					t.Errorf("Mismatch at index %d:\nExpected: %+v\nGot: %+v", i, expectedNormalized, actualNormalized)
-				}
-
+			if !reflect.DeepEqual(tt.expectedResults, results) {
+				t.Errorf("expected %v got %v", tt.expectedResults, results)
 			}
 
 		})
 	}
-}
-
-func normalizeMap(m map[string]any) map[string]string {
-	normalized := make(map[string]string)
-	for k, v := range m {
-		normalized[k] = fmt.Sprintf("%v", v)
-	}
-	return normalized
 }

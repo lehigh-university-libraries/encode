@@ -3,6 +3,7 @@ package connection
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	pgx "github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -39,7 +40,13 @@ func (p *PostgresAuth) Authenticate() error {
 }
 
 // FetchReport executes a SQL query and returns results
-func (p *PostgresAuth) FetchReport(params map[string]string) (any, error) {
+func (p *PostgresAuth) FetchReport(params map[string]string) ([]map[string]string, error) {
+	err := p.Authenticate()
+	if err != nil {
+		slog.Warn("Unable to authenticate")
+		return nil, err
+	}
+
 	if p.DB == nil {
 		return nil, errors.New("PostgreSQL database not initialized")
 	}
@@ -55,7 +62,7 @@ func (p *PostgresAuth) FetchReport(params map[string]string) (any, error) {
 	}
 	defer rows.Close()
 
-	var results []map[string]any
+	var results []map[string]string
 	cols := rows.FieldDescriptions()
 
 	for rows.Next() {
@@ -69,9 +76,10 @@ func (p *PostgresAuth) FetchReport(params map[string]string) (any, error) {
 			return nil, err
 		}
 
-		rowMap := make(map[string]any)
+		rowMap := make(map[string]string)
 		for i, col := range cols {
-			rowMap[string(col.Name)] = rowData[i]
+			// todo: reflect on rowData[i] type and convert properly to string
+			rowMap[string(col.Name)] = rowData[i].(string)
 		}
 		results = append(results, rowMap)
 	}
