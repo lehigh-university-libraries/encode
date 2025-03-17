@@ -28,7 +28,7 @@ func (g *GoogleSheetsAuth) Authenticate() error {
 	return nil
 }
 
-func (g *GoogleSheetsAuth) FetchReport(params map[string]string) (any, error) {
+func (g *GoogleSheetsAuth) FetchReport(params map[string]string) ([]map[string]string, error) {
 	if g.Service == nil {
 		return nil, errors.New("Google Sheets API not initialized")
 	}
@@ -42,9 +42,10 @@ func (g *GoogleSheetsAuth) FetchReport(params map[string]string) (any, error) {
 		return nil, errors.New("missing range parameter")
 	}
 
-	resp, err := g.Service.Spreadsheets.Values.Get(spreadsheetID, readRange).Do()
+	// todo: map from result to []map[string]string
+	_, err := g.Service.Spreadsheets.Values.Get(spreadsheetID, readRange).Do()
 	if err != nil {
 		return nil, err
 	}
-	return resp.Values, nil
+	return nil, nil
 }

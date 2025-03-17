@@ -1,3 +1,4 @@
+stagingDirectory: "/tmp"
 connections:
   - name: Privleged Google Drive User
     type: GoogleSheets
