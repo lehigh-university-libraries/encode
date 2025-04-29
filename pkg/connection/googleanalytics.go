@@ -30,7 +30,7 @@ func (g *GoogleAuth) Authenticate() error {
 // FetchReport retrieves a report from Google Analytics
 func (g *GoogleAuth) FetchReport(params map[string]string) ([]map[string]string, error) {
 	if g.Service == nil {
-		return nil, errors.New("Google Analytics API not initialized")
+		return nil, errors.New("google analytics API not initialized")
 	}
 
 	viewID, ok := params["view_id"]

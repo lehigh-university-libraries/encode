@@ -36,6 +36,6 @@ func InitializeConnection(connData map[string]any) (connection.ConnectionProvide
 			DSN: connData["dsn"].(string),
 		}, nil
 	default:
-		return nil, fmt.Errorf("Unknown connection type: %s", connType)
+		return nil, fmt.Errorf("unknown connection type: %s", connType)
 	}
 }

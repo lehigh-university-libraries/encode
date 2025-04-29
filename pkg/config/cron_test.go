@@ -15,14 +15,10 @@ import (
 func TestRunCommand_WithAssertions(t *testing.T) {
 	// see https://go.dev/blog/synctest#testing-time
 	synctest.Run(func() {
-		ctx := context.Background()
-
 		const timeout = 25 * time.Hour
 
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
-
-		// TODO: start postgres
 
 		// Calculate the target time in seconds from midnight
 		now := time.Now()

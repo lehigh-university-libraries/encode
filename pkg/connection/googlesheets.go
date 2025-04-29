@@ -30,7 +30,7 @@ func (g *GoogleSheetsAuth) Authenticate() error {
 
 func (g *GoogleSheetsAuth) FetchReport(params map[string]string) ([]map[string]string, error) {
 	if g.Service == nil {
-		return nil, errors.New("Google Sheets API not initialized")
+		return nil, errors.New("google sheets API not initialized")
 	}
 
 	spreadsheetID, ok := params["spreadsheet_id"]
