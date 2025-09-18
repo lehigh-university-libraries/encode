@@ -40,7 +40,14 @@ func (r ReportConfig) Run() {
 		return
 	}
 
-	filename := filepath.Join(r.StagingDirectory, r.Name, time.Now().Format("2006-01-02.15.04.05.csv"))
+	reportDir := filepath.Join(r.StagingDirectory, r.Name)
+	err = os.MkdirAll(reportDir, 0755)
+	if err != nil {
+		slog.Error("Error creating report directory", "dir", reportDir, "err", err)
+		return
+	}
+
+	filename := filepath.Join(reportDir, time.Now().Format("2006-01-02.15.04.05.csv"))
 	file, err := os.Create(filename)
 	if err != nil {
 		slog.Error("Error creating file", "filename", filename, "err", err)
@@ -63,10 +70,14 @@ func writeToCSV(data []map[string]string, f *os.File) error {
 	file := csv.NewWriter(f)
 	defer file.Flush()
 
+	if len(data) == 0 {
+		return nil
+	}
+
 	// Get the keys from the first map to use as the header row
-	header := make([]string, len(data[0]))
-	for _, column := range data[0] {
-		header = append(header, column)
+	var header []string
+	for key := range data[0] {
+		header = append(header, key)
 	}
 
 	// Write the header row
@@ -77,9 +88,9 @@ func writeToCSV(data []map[string]string, f *os.File) error {
 
 	// Write the data rows
 	for _, row := range data {
-		record := make([]string, len(row))
-		for _, value := range row {
-			record = append(record, value)
+		var record []string
+		for _, key := range header {
+			record = append(record, row[key])
 		}
 		err = file.Write(record)
 		if err != nil {

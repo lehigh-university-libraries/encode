@@ -35,6 +35,14 @@ func InitializeConnection(connData map[string]any) (connection.ConnectionProvide
 		return &connection.PostgresAuth{
 			DSN: connData["dsn"].(string),
 		}, nil
+	case "Mock":
+		name := ""
+		if n, ok := connData["name"].(string); ok {
+			name = n
+		}
+		return &connection.MockConnection{
+			Name: name,
+		}, nil
 	default:
 		return nil, fmt.Errorf("unknown connection type: %s", connType)
 	}

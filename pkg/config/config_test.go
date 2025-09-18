@@ -85,6 +85,11 @@ reports:
 		{
 			name: "Environment Variable Expansion",
 			yamlContent: `
+connections:
+  - name: google_sheets
+    type: GoogleSheets
+    credentials_file: "path/to/google-service-account.json"
+
 reports:
   - name: Env Report
     connection: google_sheets

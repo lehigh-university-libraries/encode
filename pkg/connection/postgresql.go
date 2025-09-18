@@ -41,10 +41,13 @@ func (p *PostgresAuth) Authenticate() error {
 
 // FetchReport executes a SQL query and returns results
 func (p *PostgresAuth) FetchReport(params map[string]string) ([]map[string]string, error) {
-	err := p.Authenticate()
-	if err != nil {
-		slog.Warn("Unable to authenticate")
-		return nil, err
+	// Only authenticate if DB is not already set (e.g., for testing with mocks)
+	if p.DB == nil {
+		err := p.Authenticate()
+		if err != nil {
+			slog.Warn("Unable to authenticate")
+			return nil, err
+		}
 	}
 
 	if p.DB == nil {

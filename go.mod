@@ -1,6 +1,6 @@
 module github.com/lehigh-university-libraries/encode
 
-go 1.24.2
+go 1.25.1
 
 require (
 	github.com/jackc/pgx/v5 v5.7.2
