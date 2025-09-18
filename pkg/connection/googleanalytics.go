@@ -28,9 +28,9 @@ func (g *GoogleAuth) Authenticate() error {
 }
 
 // FetchReport retrieves a report from Google Analytics
-func (g *GoogleAuth) FetchReport(params map[string]string) (any, error) {
+func (g *GoogleAuth) FetchReport(params map[string]string) ([]map[string]string, error) {
 	if g.Service == nil {
-		return nil, errors.New("Google Analytics API not initialized")
+		return nil, errors.New("google analytics API not initialized")
 	}
 
 	viewID, ok := params["view_id"]
@@ -57,10 +57,11 @@ func (g *GoogleAuth) FetchReport(params map[string]string) (any, error) {
 		req = req.Dimensions(dimensions)
 	}
 
-	resp, err := req.Do()
+	// todo: map resp to []map[string]string
+	_, err := req.Do()
 	if err != nil {
 		return nil, err
 	}
 
-	return resp.Rows, nil
+	return nil, nil
 }

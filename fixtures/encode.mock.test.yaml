@@ -1,0 +1,11 @@
+stagingDirectory: "/tmp"
+connections:
+  - name: mock_connection
+    type: Mock
+
+reports:
+  - name: test_report
+    connection: mock_connection
+    query_params:
+      query: "SELECT 1"
+    schedule: "0 0 * * *" # Every day at midnight

@@ -1,0 +1,11 @@
+stagingDirectory: "/tmp"
+connections:
+  - name: metadb
+    type: PostgreSQL
+    dsn: "postgres://foo:bar@localhost:5432/metadb"
+reports:
+  - name: users_report
+    connection: metadb
+    query_params:
+      query: "SELECT id, name FROM users"
+    schedule: "0 0 1 * *" # First of every month at midnight
