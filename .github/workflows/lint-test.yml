@@ -6,8 +6,6 @@ permissions:
 jobs:
   lint-test:
     runs-on: ubuntu-24.04
-    env:
-      GOEXPERIMENT: synctest
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
@@ -21,8 +19,8 @@ jobs:
         with:
           version: latest
 
-      - name: Install dependencies
-        run: go get .
+      - name: lint
+        run: make lint
 
-      - name: Test with the Go CLI
-        run: go test -v -race ./...
+      - name: unit tests
+        run: make test
