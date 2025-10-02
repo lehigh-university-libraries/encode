@@ -1,35 +1,40 @@
 stagingDirectory: "/tmp"
+
+s3:
+  enabled: true
+  bucket: "your-s3-bucket-name"
+  region: "us-east-1"
+  prefix: "encode-reports"
+  manifest_path: "/tmp/manifests"
+
 connections:
-  - name: Privleged Google Drive User
-    type: GoogleSheets
-    credentials_file: "/path/to/google-service-account.json"
-
   - name: metadb
-    type: PostgreSQL
-    dsn: "postgres://${METADB_USER}:${METADB_PASSWORD}@${METADB_HOST}:${METADB_PORT}/${METADB_DB}"
+    type: MariaDB
+    dsn: "${DB_USER}:${DB_PASSWORD}@tcp(${DB_HOST}:${DB_PORT})/${DB_NAME}"
 
-  - name: LibGuides
-    type: APIKey
-    api_key: "${LIBGUIDES_API_KEY}"
-    http_header_name: "Authorization"
+  - name: ole_db
+    type: MariaDB
+    dsn: "${OLE_DB_USER}:${OLE_DB_PASSWORD}@tcp(${OLE_DB_HOST}:${OLE_DB_PORT})/${OLE_DB_NAME}"
+
+  - name: postgres_db
+    type: PostgreSQL
+    dsn: "postgres://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${PG_DB}"
 
 reports:
+  - name: circulation_report
+    connection: metadb
+    query_params:
+      query: "SELECT date, checkouts, renewals FROM circulation_stats WHERE date >= CURDATE() - INTERVAL 1 DAY"
+    schedule: "0 2 * * *" # Daily at 2 AM
+
   - name: users_report
     connection: postgres_db
     query_params:
-      query: "SELECT id, name FROM users"
-    template: "templates/users.tmpl"
+      query: "SELECT id, name, email, created_at FROM users WHERE updated_at >= NOW() - INTERVAL '1 day'"
     schedule: "0 0 1 * *" # First of every month at midnight
 
-  - name: sales_report
-    connection: Privleged Google Drive User
+  - name: gate_counts_report
+    connection: ole_db
     query_params:
-      spreadsheet_id: "your-spreadsheet-id"
-      range: "Sheet1!A1:C3"
-    template: "templates/sales.tmpl"
-    schedule: "0 9 * * 1" # Every Monday at 9 AM
-
-  - name: external_api_report
-    connection: api_service
-    template: "templates/api.tmpl"
-    schedule: "01 12 * * *" # Every day at 12:01pm
+      query: "SELECT DATE(timestamp) as `date`, SUM(incoming_diff) as count FROM lib_gate_counts WHERE DATE(timestamp) >= CURDATE() - INTERVAL 14 DAY GROUP BY DATE(timestamp) ORDER BY date DESC"
+    schedule: "0 3 */14 * *" # Every 14 days at 3 AM

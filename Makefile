@@ -9,6 +9,9 @@ deps:
 build: deps
 	go build -o $(BINARY_NAME) .
 
+docker:
+	docker build -t $(BINARY_NAME):latest .
+
 lint:
 	go fmt ./...
 	golangci-lint run
@@ -18,6 +21,13 @@ lint:
 		yq . **/*.yml > /dev/null; \
 	else \
 		echo "yq not found, skipping YAML validation"; \
+	fi
+
+	@if command -v hadolint > /dev/null 2>&1; then \
+		echo "Running hadolint on Dockerfiles..."; \
+		find . -name "Dockerfile" | xargs hadolint; \
+	else \
+		echo "hadolint not found, skipping Dockerfile validation"; \
 	fi
 
 test: build

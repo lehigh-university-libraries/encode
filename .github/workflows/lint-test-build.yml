@@ -1,4 +1,4 @@
-name: lint-test
+name: lint-test-build
 on: [push]
 permissions:
   contents: read
@@ -24,3 +24,11 @@ jobs:
 
       - name: unit tests
         run: make test
+
+  build-push:
+    needs: [lint-test]
+    uses: lehigh-university-libraries/gha/.github/workflows/build-push-ghcr.yaml@main
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit
