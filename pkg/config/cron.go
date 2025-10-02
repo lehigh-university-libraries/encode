@@ -61,6 +61,34 @@ func (r ReportConfig) Run() {
 	}
 
 	slog.Info("Saved report", "filename", filename)
+
+	// Upload to S3 if configured
+	if r.s3Uploader != nil {
+		s3URI, err := r.s3Uploader.UploadFile(filename, r.Name)
+		if err != nil {
+			slog.Error("Failed to upload file to S3", "filename", filename, "err", err)
+			return
+		}
+
+		// Generate and upload manifest if URI was returned
+		if s3URI != "" {
+			err = r.s3Uploader.GenerateManifest(r.Name, s3URI)
+			if err != nil {
+				slog.Error("Failed to generate manifest", "report", r.Name, "err", err)
+				return
+			}
+
+			// Upload the updated manifest to S3 for QuickSight
+			manifestURL, err := r.s3Uploader.UploadManifestForReport(r.Name)
+			if err != nil {
+				slog.Error("Failed to upload manifest to S3", "report", r.Name, "err", err)
+				return
+			}
+			if manifestURL != "" {
+				slog.Info("Manifest available for QuickSight", "report", r.Name, "url", manifestURL)
+			}
+		}
+	}
 }
 
 // writeToCSV writes a slice of maps to a CSV file.

@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/lehigh-university-libraries/encode/pkg/connection"
+	"github.com/lehigh-university-libraries/encode/pkg/storage"
 	cron "github.com/robfig/cron/v3"
 	yaml "gopkg.in/yaml.v3"
 )
@@ -14,6 +15,8 @@ type Config struct {
 	Connections      []map[string]any `yaml:"connections"`
 	Reports          []ReportConfig   `yaml:"reports"`
 	StagingDirectory string           `yaml:"stagingDirectory"`
+	S3               storage.S3Config `yaml:"s3"`
+	s3Uploader       *storage.S3Uploader
 }
 
 type ReportConfig struct {
@@ -24,6 +27,7 @@ type ReportConfig struct {
 	Schedule         string            `yaml:"schedule"`
 	StagingDirectory string
 	connection       connection.ConnectionProvider
+	s3Uploader       *storage.S3Uploader
 }
 
 func LoadConfig(filename string) (*Config, error) {
@@ -38,6 +42,16 @@ func LoadConfig(filename string) (*Config, error) {
 
 	var config Config
 	err = yaml.Unmarshal([]byte(expandedYaml), &config)
+
+	// Initialize S3 uploader if enabled
+	if config.S3.Enabled {
+		config.s3Uploader, err = storage.NewS3Uploader(config.S3)
+		if err != nil {
+			slog.Error("Failed to initialize S3 uploader", "err", err)
+			return nil, fmt.Errorf("failed to initialize S3 uploader: %w", err)
+		}
+		slog.Info("S3 uploader initialized", "bucket", config.S3.Bucket, "region", config.S3.Region)
+	}
 
 	// Validate cron expressions
 	for k, report := range config.Reports {
@@ -64,6 +78,7 @@ func LoadConfig(filename string) (*Config, error) {
 		}
 		config.Reports[k].StagingDirectory = config.StagingDirectory
 		config.Reports[k].connection = c
+		config.Reports[k].s3Uploader = config.s3Uploader
 	}
 
 	return &config, err
