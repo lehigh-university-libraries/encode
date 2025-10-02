@@ -1,8 +1,6 @@
 package connection_test
 
 import (
-	"context"
-	"database/sql"
 	"errors"
 	"reflect"
 	"testing"
@@ -103,17 +101,4 @@ func TestMariaDBAuth_FetchReport(t *testing.T) {
 
 		})
 	}
-}
-
-// mockDB implements SqlQuerier for testing
-type mockDB struct {
-	*sql.DB
-}
-
-func (m *mockDB) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
-	return m.DB.QueryContext(ctx, query, args...)
-}
-
-func (m *mockDB) Close() error {
-	return m.DB.Close()
 }
