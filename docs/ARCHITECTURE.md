@@ -8,6 +8,7 @@
      - `FetchReport(params map[string]string) ([]map[string]string, error)` - retrieves data
    - Implementations:
      - `PostgresAuth`: Executes SQL queries via pgx connection pool
+     - `MariaDBAuth`: Executes SQL queries via database/sql with MySQL driver
      - `GoogleSheetsAuth`: Fetches data from Google Sheets (implementation incomplete)
      - `GoogleAnalyticsAuth`: Google Analytics integration (implementation incomplete)
      - `MockConnection`: For testing
@@ -41,18 +42,20 @@
 
 Connection types in YAML:
 - `PostgreSQL`: requires `dsn` field
+- `MariaDB`: requires `dsn` field
 - `GoogleSheets`: requires `credentials_file` field
 - `Mock`: for testing
 
 Report parameters vary by connection type:
-- PostgreSQL: `query_params.query`
+- PostgreSQL/MariaDB: `query_params.query`
 - GoogleSheets: `query_params.spreadsheet_id` and `query_params.range`
 
 ### Testing Notes
 
 - PostgreSQL tests use `pashagolub/pgxmock` for mocking database connections
+- MariaDB tests use `DATA-DOG/go-sqlmock` for mocking database connections
 - Test fixtures in `fixtures/` directory include example YAML configs
-- `PostgresAuth.DB` field is exposed to allow injecting mock connections in tests
+- `PostgresAuth.DB` and `MariaDBAuth.DB` fields are exposed to allow injecting mock connections in tests
 
 ### Known TODOs/Limitations
 
