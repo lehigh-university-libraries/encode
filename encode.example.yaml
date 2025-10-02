@@ -12,6 +12,10 @@ connections:
     type: MariaDB
     dsn: "${DB_USER}:${DB_PASSWORD}@tcp(${DB_HOST}:${DB_PORT})/${DB_NAME}"
 
+  - name: ole_db
+    type: MariaDB
+    dsn: "${OLE_DB_USER}:${OLE_DB_PASSWORD}@tcp(${OLE_DB_HOST}:${OLE_DB_PORT})/${OLE_DB_NAME}"
+
   - name: postgres_db
     type: PostgreSQL
     dsn: "postgres://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${PG_DB}"
@@ -28,3 +32,9 @@ reports:
     query_params:
       query: "SELECT id, name, email, created_at FROM users WHERE updated_at >= NOW() - INTERVAL '1 day'"
     schedule: "0 0 1 * *" # First of every month at midnight
+
+  - name: gate_counts_report
+    connection: ole_db
+    query_params:
+      query: "SELECT DATE(timestamp) as `date`, SUM(incoming_diff) as count FROM lib_gate_counts WHERE DATE(timestamp) >= CURDATE() - INTERVAL 14 DAY GROUP BY DATE(timestamp) ORDER BY date DESC"
+    schedule: "0 3 */14 * *" # Every 14 days at 3 AM

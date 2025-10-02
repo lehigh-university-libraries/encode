@@ -83,3 +83,15 @@ func LoadConfig(filename string) (*Config, error) {
 
 	return &config, err
 }
+
+// RunReportOnce executes a single report by name and returns immediately
+func (c *Config) RunReportOnce(reportName string) error {
+	for _, report := range c.Reports {
+		if report.Name == reportName {
+			slog.Info("Running report once", "report", reportName)
+			report.Run()
+			return nil
+		}
+	}
+	return fmt.Errorf("report '%s' not found in configuration", reportName)
+}

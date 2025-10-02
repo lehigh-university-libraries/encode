@@ -1,0 +1,13 @@
+encode
+.git
+.github
+gha-creds-*.json
+docs
+encode.example.yml
+encode.yml
+renovate.json5
+Makefile
+Dockerfile
+*.md
+.claude
+tests
