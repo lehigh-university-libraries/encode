@@ -39,3 +39,7 @@ Enable S3 uploads for QuickSight integration:
 - `manifest_path`: Local directory for manifest files
 
 AWS credentials are loaded via standard AWS SDK credential chain (environment variables, AWS config files, IAM roles).
+
+## QuickSight Integration
+
+See [docs/AWS_QUICKSIGHT.md](./docs/AWS_QUICKSIGHT.md)
