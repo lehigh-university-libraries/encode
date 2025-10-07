@@ -9,6 +9,7 @@
    - Implementations:
      - `PostgresAuth`: Executes SQL queries via pgx connection pool
      - `MariaDBAuth`: Executes SQL queries via database/sql with MySQL driver
+     - `FolioAuth`: Authenticates to FOLIO API and executes SQL queries from GitHub URLs via MetaDB
      - `GoogleSheetsAuth`: Fetches data from Google Sheets (implementation incomplete)
      - `GoogleAnalyticsAuth`: Google Analytics integration (implementation incomplete)
      - `MockConnection`: For testing
@@ -56,11 +57,13 @@
 Connection types in YAML:
 - `PostgreSQL`: requires `dsn` field
 - `MariaDB`: requires `dsn` field
+- `FOLIO`: requires `base_url`, `tenant`, `username`, and `password` fields
 - `GoogleSheets`: requires `credentials_file` field
 - `Mock`: for testing
 
 Report parameters vary by connection type:
 - PostgreSQL/MariaDB: `query_params.query`
+- FOLIO: `query_params.query_url` (GitHub raw URL to SQL file)
 - GoogleSheets: `query_params.spreadsheet_id` and `query_params.range`
 
 S3 configuration (optional):

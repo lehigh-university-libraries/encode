@@ -39,6 +39,13 @@ func InitializeConnection(connData map[string]any) (connection.ConnectionProvide
 		return &connection.MariaDBAuth{
 			DSN: connData["dsn"].(string),
 		}, nil
+	case "FOLIO":
+		return &connection.FolioAuth{
+			BaseURL:  connData["base_url"].(string),
+			Tenant:   connData["tenant"].(string),
+			Username: connData["username"].(string),
+			Password: connData["password"].(string),
+		}, nil
 	case "Mock":
 		name := ""
 		if n, ok := connData["name"].(string); ok {
