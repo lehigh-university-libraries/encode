@@ -3,7 +3,6 @@ package connection
 import (
 	"bytes"
 	"context"
-	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,6 +32,12 @@ type loginRequest struct {
 type reportRequest struct {
 	URL    string            `json:"url"`
 	Params map[string]string `json:"params,omitempty"`
+}
+
+// reportResponse represents the FOLIO report API response
+type reportResponse struct {
+	TotalRecords int                      `json:"totalRecords"`
+	Records      []map[string]interface{} `json:"records"`
 }
 
 // Authenticate logs into FOLIO and retrieves an authentication token
@@ -158,34 +163,31 @@ func (f *FolioAuth) FetchReport(params map[string]string) ([]map[string]string, 
 		return nil, fmt.Errorf("report request failed with status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
-	// Read CSV response
-	csvReader := csv.NewReader(resp.Body)
-	csvReader.LazyQuotes = true
-	csvReader.TrimLeadingSpace = true
-
-	records, err := csvReader.ReadAll()
+	// Read JSON response
+	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse CSV response: %w", err)
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	if len(records) == 0 {
-		return []map[string]string{}, nil
+	var reportResp reportResponse
+	err = json.Unmarshal(bodyBytes, &reportResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JSON response: %w", err)
 	}
 
-	// First row is headers
-	headers := records[0]
-	var results []map[string]string
-
-	for i := 1; i < len(records); i++ {
+	// Convert []map[string]interface{} to []map[string]string
+	results := make([]map[string]string, len(reportResp.Records))
+	for i, record := range reportResp.Records {
 		rowMap := make(map[string]string)
-		for j, header := range headers {
-			if j < len(records[i]) {
-				rowMap[header] = records[i][j]
+		for key, value := range record {
+			// Convert all values to strings
+			if value == nil {
+				rowMap[key] = ""
 			} else {
-				rowMap[header] = ""
+				rowMap[key] = fmt.Sprintf("%v", value)
 			}
 		}
-		results = append(results, rowMap)
+		results[i] = rowMap
 	}
 
 	slog.Debug("FOLIO report fetched successfully", "rows", len(results))

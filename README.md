@@ -5,7 +5,7 @@ Authenticate to various sources, generate reports on a schedule, and upload to A
 ## Overview
 
 `encode` is a Go CLI tool that:
-- Connects to data sources (PostgreSQL, MariaDB, Google Sheets)
+- Connects to data sources (PostgreSQL, MariaDB, FOLIO MetaDB, Google Sheets)
 - Runs SQL queries on a cron schedule
 - Saves results as CSV files locally
 - Uploads to AWS S3 with cumulative manifest files for QuickSight
@@ -20,6 +20,7 @@ Define a list of `connections` - each is a way to authenticate to a remote servi
 
 - `PostgreSQL`: Requires `dsn` field
 - `MariaDB`: Requires `dsn` field
+- `FOLIO`: Requires `base_url`, `tenant`, `username`, and `password` fields
 - `GoogleSheets`: Requires `credentials_file` field
 
 ### Reports

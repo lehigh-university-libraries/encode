@@ -145,9 +145,10 @@ func TestFolioAuth_FetchReport(t *testing.T) {
 					t.Errorf("Expected body %s, got %s", expectedBody, string(body))
 				}
 
-				w.Header().Set("Content-Type", "text/csv")
+				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write([]byte("id,name,amount\n1,Alice,100\n2,Bob,200\n"))
+				jsonResponse := `{"totalRecords":2,"records":[{"id":"1","name":"Alice","amount":"100"},{"id":"2","name":"Bob","amount":"200"}]}`
+				_, _ = w.Write([]byte(jsonResponse))
 			},
 			expectError: false,
 			expectedResults: []map[string]string{
@@ -164,7 +165,7 @@ func TestFolioAuth_FetchReport(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "Empty CSV Response",
+			name: "Empty JSON Response",
 			auth: &connection.FolioAuth{
 				Token: "test-token-123",
 			},
@@ -172,9 +173,10 @@ func TestFolioAuth_FetchReport(t *testing.T) {
 				"query_url": "https://example.com/query.sql",
 			},
 			serverResponse: func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "text/csv")
+				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write([]byte(""))
+				jsonResponse := `{"totalRecords":0,"records":[]}`
+				_, _ = w.Write([]byte(jsonResponse))
 			},
 			expectError:     false,
 			expectedResults: []map[string]string{},
@@ -210,9 +212,10 @@ func TestFolioAuth_FetchReport(t *testing.T) {
 					return
 				}
 
-				w.Header().Set("Content-Type", "text/csv")
+				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write([]byte("id,value\n1,test\n"))
+				jsonResponse := `{"totalRecords":1,"records":[{"id":"1","value":"test"}]}`
+				_, _ = w.Write([]byte(jsonResponse))
 			},
 			expectError: false,
 			expectedResults: []map[string]string{

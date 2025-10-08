@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-`encode` is a Go CLI tool that authenticates to various data sources (PostgreSQL, MariaDB, Google Sheets), fetches reports on a cron schedule, saves the output as CSV files, and uploads to AWS S3 with QuickSight-compatible manifests for data visualization.
+`encode` is a Go CLI tool that authenticates to various data sources (PostgreSQL, MariaDB, FOLIO MetaDB, Google Sheets), fetches reports on a cron schedule, saves the output as CSV files, and uploads to AWS S3 with QuickSight-compatible manifests for data visualization.
 
 
 ## 📚 Critical Documentation References

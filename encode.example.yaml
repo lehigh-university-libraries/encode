@@ -20,6 +20,13 @@ connections:
     type: PostgreSQL
     dsn: "postgres://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${PG_DB}"
 
+  - name: folio_metadb
+    type: FOLIO
+    base_url: "${FOLIO_BASE_URL}"
+    tenant: "${FOLIO_TENANT}"
+    username: "${FOLIO_USERNAME}"
+    password: "${FOLIO_PASSWORD}"
+
 reports:
   - name: circulation_report
     connection: metadb
@@ -38,3 +45,9 @@ reports:
     query_params:
       query: "SELECT DATE(timestamp) as `date`, SUM(incoming_diff) as count FROM lib_gate_counts WHERE DATE(timestamp) >= CURDATE() - INTERVAL 14 DAY GROUP BY DATE(timestamp) ORDER BY date DESC"
     schedule: "0 3 */14 * *" # Every 14 days at 3 AM
+
+  - name: fund_expenses_report
+    connection: folio_metadb
+    query_params:
+      query_url: "https://raw.githubusercontent.com/your-org/folio-metadb-queries/main/quicksight/get_fund_expenses_by_group.sql"
+    schedule: "0 4 * * *" # Daily at 4 AM
