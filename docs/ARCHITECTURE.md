@@ -9,6 +9,10 @@
    - Implementations:
      - `PostgresAuth`: Executes SQL queries via pgx connection pool
      - `MariaDBAuth`: Executes SQL queries via database/sql with MySQL driver
+     - `FolioAuth`: Authenticates to FOLIO MetaDB API and executes SQL functions from GitHub URLs via `/ldp/db/reports` endpoint
+       - API returns JSON responses with format: `{"totalRecords": int, "records": []map[string]interface{}}`
+       - SQL files must define PostgreSQL functions with special comment format: `--metadb:function function_name`
+       - Source code: https://github.com/folio-org/mod-reporting/blob/main/src/reporting.go
      - `GoogleSheetsAuth`: Fetches data from Google Sheets (implementation incomplete)
      - `GoogleAnalyticsAuth`: Google Analytics integration (implementation incomplete)
      - `MockConnection`: For testing
@@ -56,11 +60,15 @@
 Connection types in YAML:
 - `PostgreSQL`: requires `dsn` field
 - `MariaDB`: requires `dsn` field
+- `FOLIO`: requires `base_url`, `tenant`, `username`, and `password` fields
 - `GoogleSheets`: requires `credentials_file` field
 - `Mock`: for testing
 
 Report parameters vary by connection type:
 - PostgreSQL/MariaDB: `query_params.query`
+- FOLIO: `query_params.query_url` (GitHub raw URL to SQL file containing a PostgreSQL function definition)
+  - SQL must start with comment: `--metadb:function function_name` or `--ldp:function function_name`
+  - SQL must define a function using `CREATE OR REPLACE FUNCTION function_name() RETURNS TABLE (...) AS $$ ... $$ LANGUAGE SQL;`
 - GoogleSheets: `query_params.spreadsheet_id` and `query_params.range`
 
 S3 configuration (optional):

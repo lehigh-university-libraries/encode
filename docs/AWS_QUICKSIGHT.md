@@ -100,3 +100,22 @@ https://library-reports.s3-us-east-1.amazonaws.com/encode-reports/manifests/circ
 **Column mismatch errors:**
 - All CSV files must have identical column names and order
 - Check your SQL queries maintain consistent schema across runs
+
+### Bucket policy
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "GetObjectForQuicksight",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::YOUR-AWS-QUICKSIGHT-ACCOUNT-ID:role/service-role/aws-quicksight-service-role-v0"
+            },
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::YOUR-BUCKET/*"
+        }
+    ]
+}
+```
