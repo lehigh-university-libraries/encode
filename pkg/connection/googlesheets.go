@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
+	"strings"
 
 	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
@@ -44,20 +46,26 @@ func (g *GoogleSheetsAuth) FetchReport(params map[string]string) ([]map[string]s
 		return nil, errors.New("missing spreadsheet_id parameter")
 	}
 
-	gid, ok := params["gid"]
+	gidParam, ok := params["gid"]
 	if !ok {
 		return nil, errors.New("missing gid parameter")
 	}
 
-	// Header row position (1 or 2)
+	// Parse comma-separated GIDs
+	gidStrings := strings.Split(gidParam, ",")
+	if len(gidStrings) == 0 {
+		return nil, errors.New("gid parameter is empty")
+	}
+
+	// Header row position (default: 1)
 	headerRow := 1
 	if hr, ok := params["header_row"]; ok {
 		parsed, err := strconv.Atoi(hr)
 		if err != nil {
 			return nil, fmt.Errorf("invalid header_row value: %w", err)
 		}
-		if parsed != 1 && parsed != 2 {
-			return nil, errors.New("header_row must be 1 or 2")
+		if parsed < 1 {
+			return nil, errors.New("header_row must be >= 1")
 		}
 		headerRow = parsed
 	}
@@ -65,96 +73,116 @@ func (g *GoogleSheetsAuth) FetchReport(params map[string]string) ([]map[string]s
 	// Data starts at the row after the header
 	dataStartRow := headerRow + 1
 
-	// First, get the sheet name from the gid
+	// Get spreadsheet metadata to map GIDs to sheet names
 	spreadsheet, err := g.Service.Spreadsheets.Get(spreadsheetID).Do()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get spreadsheet: %w", err)
 	}
 
-	var sheetName string
-	gidInt, err := strconv.ParseInt(gid, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid gid format: %w", err)
-	}
-
+	// Build a map of GID -> Sheet Name
+	gidToName := make(map[int64]string)
 	for _, sheet := range spreadsheet.Sheets {
-		if sheet.Properties.SheetId == gidInt {
-			sheetName = sheet.Properties.Title
-			break
-		}
+		gidToName[sheet.Properties.SheetId] = sheet.Properties.Title
 	}
 
-	if sheetName == "" {
-		return nil, fmt.Errorf("sheet with gid %s not found", gid)
-	}
+	var headers []string
+	var allResults []map[string]string
 
-	// Read header row
-	headerRange := fmt.Sprintf("%s!A%d:ZZ%d", sheetName, headerRow, headerRow)
-	headerResp, err := g.Service.Spreadsheets.Values.Get(spreadsheetID, headerRange).Do()
-	if err != nil {
-		return nil, fmt.Errorf("failed to read header row: %w", err)
-	}
-
-	if len(headerResp.Values) == 0 || len(headerResp.Values[0]) == 0 {
-		return nil, errors.New("header row is empty")
-	}
-
-	// Extract headers
-	headers := make([]string, len(headerResp.Values[0]))
-	for i, v := range headerResp.Values[0] {
-		if str, ok := v.(string); ok {
-			headers[i] = str
-		} else {
-			headers[i] = fmt.Sprintf("%v", v)
-		}
-	}
-
-	// Read all data starting from dataStartRow
-	// We'll read a large range and iterate until we find a blank cell in column A
-	dataRange := fmt.Sprintf("%s!A%d:ZZ10000", sheetName, dataStartRow)
-	dataResp, err := g.Service.Spreadsheets.Values.Get(spreadsheetID, dataRange).Do()
-	if err != nil {
-		return nil, fmt.Errorf("failed to read data: %w", err)
-	}
-
-	var results []map[string]string
-
-	// Iterate through rows until column A is blank
-	for _, row := range dataResp.Values {
-		// Check if column A (index 0) is blank or empty
-		if len(row) == 0 {
-			break
+	// Process each GID
+	for i, gidStr := range gidStrings {
+		gidStr = strings.TrimSpace(gidStr)
+		gidInt, err := strconv.ParseInt(gidStr, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid gid format '%s': %w", gidStr, err)
 		}
 
-		firstCell := ""
-		if row[0] != nil {
-			if str, ok := row[0].(string); ok {
-				firstCell = str
-			} else {
-				firstCell = fmt.Sprintf("%v", row[0])
+		sheetName, exists := gidToName[gidInt]
+		if !exists {
+			return nil, fmt.Errorf("sheet with gid %s not found", gidStr)
+		}
+
+		slog.Debug("Processing sheet", "gid", gidStr, "name", sheetName)
+
+		// For the first GID (index 0), read the header row
+		if i == 0 {
+			headerRange := fmt.Sprintf("%s!A%d:ZZ%d", sheetName, headerRow, headerRow)
+			headerResp, err := g.Service.Spreadsheets.Values.Get(spreadsheetID, headerRange).Do()
+			if err != nil {
+				return nil, fmt.Errorf("failed to read header row from sheet '%s': %w", sheetName, err)
 			}
-		}
 
-		// Stop when column A is blank
-		if firstCell == "" {
-			break
-		}
+			if len(headerResp.Values) == 0 || len(headerResp.Values[0]) == 0 {
+				return nil, fmt.Errorf("header row is empty in sheet '%s'", sheetName)
+			}
 
-		// Map row to headers
-		rowMap := make(map[string]string)
-		for i, header := range headers {
-			if i < len(row) && row[i] != nil {
-				if str, ok := row[i].(string); ok {
-					rowMap[header] = str
+			// Extract headers
+			headers = make([]string, len(headerResp.Values[0]))
+			for j, v := range headerResp.Values[0] {
+				if str, ok := v.(string); ok {
+					headers[j] = str
 				} else {
-					rowMap[header] = fmt.Sprintf("%v", row[i])
+					headers[j] = fmt.Sprintf("%v", v)
 				}
-			} else {
-				rowMap[header] = ""
 			}
+
+			// Add "sheet" column to headers
+			headers = append(headers, "sheet")
+
+			slog.Debug("Extracted headers from first sheet", "headers", headers)
 		}
-		results = append(results, rowMap)
+
+		// Read data from this sheet
+		dataRange := fmt.Sprintf("%s!A%d:ZZ10000", sheetName, dataStartRow)
+		dataResp, err := g.Service.Spreadsheets.Values.Get(spreadsheetID, dataRange).Do()
+		if err != nil {
+			return nil, fmt.Errorf("failed to read data from sheet '%s': %w", sheetName, err)
+		}
+
+		// Process rows
+		for _, row := range dataResp.Values {
+			// Check if column A (index 0) is blank or empty
+			if len(row) == 0 {
+				break
+			}
+
+			firstCell := ""
+			if row[0] != nil {
+				if str, ok := row[0].(string); ok {
+					firstCell = str
+				} else {
+					firstCell = fmt.Sprintf("%v", row[0])
+				}
+			}
+
+			// Stop when column A is blank
+			if firstCell == "" {
+				break
+			}
+
+			// Map row to headers (excluding the "sheet" column)
+			rowMap := make(map[string]string)
+			for j, header := range headers[:len(headers)-1] { // Skip last "sheet" header
+				if j < len(row) && row[j] != nil {
+					if str, ok := row[j].(string); ok {
+						rowMap[header] = str
+					} else {
+						rowMap[header] = fmt.Sprintf("%v", row[j])
+					}
+				} else {
+					rowMap[header] = ""
+				}
+			}
+
+			// Add sheet name column
+			rowMap["sheet"] = sheetName
+
+			allResults = append(allResults, rowMap)
+		}
+
+		slog.Debug("Processed sheet", "name", sheetName, "rows", len(dataResp.Values))
 	}
 
-	return results, nil
+	slog.Info("Merged data from multiple sheets", "total_sheets", len(gidStrings), "total_rows", len(allResults))
+
+	return allResults, nil
 }
