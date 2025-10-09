@@ -85,10 +85,8 @@ func (g *GoogleSheetsAuth) FetchReport(params map[string]string) ([]map[string]s
 		gidToName[sheet.Properties.SheetId] = sheet.Properties.Title
 	}
 
-	var headers []string
-	var allResults []map[string]string
-
-	// Process each GID
+	// Fetch data from each sheet
+	var sheetDataList []SheetData
 	for i, gidStr := range gidStrings {
 		gidStr = strings.TrimSpace(gidStr)
 		gidInt, err := strconv.ParseInt(gidStr, 10, 64)
@@ -101,7 +99,9 @@ func (g *GoogleSheetsAuth) FetchReport(params map[string]string) ([]map[string]s
 			return nil, fmt.Errorf("sheet with gid %s not found", gidStr)
 		}
 
-		slog.Debug("Processing sheet", "gid", gidStr, "name", sheetName)
+		slog.Debug("Fetching data from sheet", "gid", gidStr, "name", sheetName)
+
+		sheetData := SheetData{Name: sheetName}
 
 		// For the first GID (index 0), read the header row
 		if i == 0 {
@@ -115,9 +115,53 @@ func (g *GoogleSheetsAuth) FetchReport(params map[string]string) ([]map[string]s
 				return nil, fmt.Errorf("header row is empty in sheet '%s'", sheetName)
 			}
 
-			// Extract headers
-			headers = make([]string, len(headerResp.Values[0]))
-			for j, v := range headerResp.Values[0] {
+			sheetData.Header = headerResp.Values[0]
+		}
+
+		// Read data from this sheet
+		dataRange := fmt.Sprintf("%s!A%d:ZZ10000", sheetName, dataStartRow)
+		dataResp, err := g.Service.Spreadsheets.Values.Get(spreadsheetID, dataRange).Do()
+		if err != nil {
+			return nil, fmt.Errorf("failed to read data from sheet '%s': %w", sheetName, err)
+		}
+
+		sheetData.Rows = dataResp.Values
+		sheetDataList = append(sheetDataList, sheetData)
+	}
+
+	// Parse the fetched data
+	return ParseSheetData(sheetDataList, headerRow)
+}
+
+// SheetData represents data fetched from a single sheet
+type SheetData struct {
+	Name   string
+	Header []interface{}
+	Rows   [][]interface{}
+}
+
+// ParseSheetData converts raw Google Sheets API responses into structured data
+// This function is separated for easier testing
+func ParseSheetData(sheets []SheetData, headerRow int) ([]map[string]string, error) {
+	if len(sheets) == 0 {
+		return nil, errors.New("no sheets provided")
+	}
+
+	var headers []string
+	var allResults []map[string]string
+
+	// Process each sheet
+	for i, sheet := range sheets {
+		slog.Debug("Processing sheet", "name", sheet.Name, "index", i)
+
+		// For the first sheet, extract headers
+		if i == 0 {
+			if len(sheet.Header) == 0 {
+				return nil, fmt.Errorf("header row is empty in sheet '%s'", sheet.Name)
+			}
+
+			headers = make([]string, len(sheet.Header))
+			for j, v := range sheet.Header {
 				if str, ok := v.(string); ok {
 					headers[j] = str
 				} else {
@@ -131,15 +175,8 @@ func (g *GoogleSheetsAuth) FetchReport(params map[string]string) ([]map[string]s
 			slog.Debug("Extracted headers from first sheet", "headers", headers)
 		}
 
-		// Read data from this sheet
-		dataRange := fmt.Sprintf("%s!A%d:ZZ10000", sheetName, dataStartRow)
-		dataResp, err := g.Service.Spreadsheets.Values.Get(spreadsheetID, dataRange).Do()
-		if err != nil {
-			return nil, fmt.Errorf("failed to read data from sheet '%s': %w", sheetName, err)
-		}
-
 		// Process rows
-		for _, row := range dataResp.Values {
+		for _, row := range sheet.Rows {
 			// Check if column A (index 0) is blank or empty
 			if len(row) == 0 {
 				break
@@ -174,15 +211,15 @@ func (g *GoogleSheetsAuth) FetchReport(params map[string]string) ([]map[string]s
 			}
 
 			// Add sheet name column
-			rowMap["sheet"] = sheetName
+			rowMap["sheet"] = sheet.Name
 
 			allResults = append(allResults, rowMap)
 		}
 
-		slog.Debug("Processed sheet", "name", sheetName, "rows", len(dataResp.Values))
+		slog.Debug("Processed sheet", "name", sheet.Name, "rows", len(sheet.Rows))
 	}
 
-	slog.Info("Merged data from multiple sheets", "total_sheets", len(gidStrings), "total_rows", len(allResults))
+	slog.Info("Merged data from multiple sheets", "total_sheets", len(sheets), "total_rows", len(allResults))
 
 	return allResults, nil
 }
