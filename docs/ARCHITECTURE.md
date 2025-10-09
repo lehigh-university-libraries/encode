@@ -13,7 +13,7 @@
        - API returns JSON responses with format: `{"totalRecords": int, "records": []map[string]interface{}}`
        - SQL files must define PostgreSQL functions with special comment format: `--metadb:function function_name`
        - Source code: https://github.com/folio-org/mod-reporting/blob/main/src/reporting.go
-     - `GoogleSheetsAuth`: Fetches data from Google Sheets (implementation incomplete)
+     - `GoogleSheetsAuth`: Fetches data from Google Sheets using Service Account authentication (see [GOOGLE_SHEETS.md](./GOOGLE_SHEETS.md) for setup)
      - `GoogleAnalyticsAuth`: Google Analytics integration (implementation incomplete)
      - `MockConnection`: For testing
 
@@ -69,7 +69,7 @@ Report parameters vary by connection type:
 - FOLIO: `query_params.query_url` (GitHub raw URL to SQL file containing a PostgreSQL function definition)
   - SQL must start with comment: `--metadb:function function_name` or `--ldp:function function_name`
   - SQL must define a function using `CREATE OR REPLACE FUNCTION function_name() RETURNS TABLE (...) AS $$ ... $$ LANGUAGE SQL;`
-- GoogleSheets: `query_params.spreadsheet_id` and `query_params.range`
+- GoogleSheets: `query_params.spreadsheet_id`, `query_params.gid`, and `query_params.header_row` (optional, defaults to "1")
 
 S3 configuration (optional):
 - `enabled`: boolean to enable/disable S3 uploads
@@ -116,7 +116,7 @@ To use in QuickSight:
 
 ### Known TODOs/Limitations
 
-- Google Sheets `FetchReport` returns nil (not implemented) - see pkg/connection/googlesheets.go:45
+- Google Sheets authentication requires Service Account setup and sheet sharing - see [GOOGLE_SHEETS.md](./GOOGLE_SHEETS.md) for complete setup instructions
 - PostgreSQL type conversion assumes all columns are strings - see pkg/connection/postgresql.go:84-85
 - MariaDB type conversion handles basic types but may need enhancement for complex types
 - Template processing mentioned in config but not implemented
