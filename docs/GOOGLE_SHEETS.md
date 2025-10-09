@@ -98,18 +98,24 @@ reports:
 - **`spreadsheet_id`** (required): The Google Sheets spreadsheet ID
   - Found in the URL: `https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit`
 
-- **`gid`** (required): The sheet GID (Grid ID)
-  - GID 0 is typically the first sheet
+- **`gid`** (required): The sheet GID (Grid ID), or comma-separated list of GIDs for multi-sheet reports
+  - Single sheet: `"0"` (GID 0 is typically the first sheet)
+  - Multiple sheets: `"0,1109646791,1916927317,959800694"` (comma-separated)
   - For other sheets, find the GID in the URL: `https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit#gid={GID}`
+  - **Multi-sheet behavior**:
+    - The first GID's header row is used as the canonical headers for all sheets
+    - Data from all subsequent sheets is appended using the same header structure
+    - An additional `sheet` column is automatically added at the end containing the sheet name for each row
 
 - **`header_row`** (optional): The row number where column headers are located
   - Defaults to `"1"` if not specified
   - Use `"2"` if your headers are in the second row (e.g., if row 1 contains metadata)
   - Must be a string value, not an integer
+  - Applies to all sheets when using multiple GIDs
 
-## Example: Multiple Sheets from One Spreadsheet
+## Example: Merging Multiple Sheets into a Single Report
 
-Here's an example of fetching multiple sheets (tabs) from a single spreadsheet:
+Here's an example of merging multiple sheets (tabs) from a single spreadsheet into one combined report:
 
 ```yaml
 connections:
@@ -118,38 +124,22 @@ connections:
     credentials_file: "${GOOGLE_CREDENTIALS_FILE}"
 
 reports:
-  - name: io_classes
+  - name: io_combined
     connection: google_sheets
     query_params:
       spreadsheet_id: "1FNlPFrGItPDk_kdMw2XtR_AMvX4GQ84L11uCe2DbjS8"
-      gid: "0"
-      header_row: "2"
-    schedule: "0 5 * * *"
-
-  - name: io_tours
-    connection: google_sheets
-    query_params:
-      spreadsheet_id: "1FNlPFrGItPDk_kdMw2XtR_AMvX4GQ84L11uCe2DbjS8"
-      gid: "1109646791"
-      header_row: "2"
-    schedule: "0 5 * * *"
-
-  - name: io_external
-    connection: google_sheets
-    query_params:
-      spreadsheet_id: "1FNlPFrGItPDk_kdMw2XtR_AMvX4GQ84L11uCe2DbjS8"
-      gid: "1916927317"
-      header_row: "2"
-    schedule: "0 5 * * *"
-
-  - name: io_misc
-    connection: google_sheets
-    query_params:
-      spreadsheet_id: "1FNlPFrGItPDk_kdMw2XtR_AMvX4GQ84L11uCe2DbjS8"
-      gid: "959800694"
+      gid: "0,1109646791,1916927317,959800694"  # Comma-separated GIDs
       header_row: "2"
     schedule: "0 5 * * *"
 ```
+
+This configuration will:
+1. Use the header row from the first sheet (GID 0) as the column headers
+2. Fetch data from all four sheets: classes (0), tours (1109646791), external (1916927317), and misc (959800694)
+3. Append all data together into a single CSV file
+4. Add a `sheet` column at the end of each row containing the sheet name
+
+The resulting CSV will have all the data combined with a column indicating which sheet each row came from.
 
 ## Security Best Practices
 
